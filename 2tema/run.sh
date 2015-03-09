@@ -1,5 +1,5 @@
 #!/bin/sh
-rm 1tema
-clang++ -g -std=c++11 3.cpp -o1tema
-./1tema
+rm 2tema
+clang++ -g -std=c++11 2.cpp -o2tema -larmadillo
+./2tema
 
