@@ -22,6 +22,7 @@ class LU {
         double eps;
         double m;
         vector<double> b;
+        vector<double> solution;
     public:
         static LU from_file(string filePath) {
             ifstream input(filePath.c_str());
@@ -145,8 +146,6 @@ class LU {
                 ys[i] = temp;
             }
 
-            cout << "YS " << ys;
-
             vector<double> xs = vector<double>(size, 0);
             double n = size - 1;
             xs[n] = div(ys[n], getU(n ,n));
@@ -161,7 +160,29 @@ class LU {
                 temp = div(temp, getU(i, i));
                 xs[i] = temp;
             }
+            solution = xs;
             return xs;
+        }
+
+        double findTheEuclidean() {
+            double errorSum = 0;
+            for (int i = 0; i < A.n_rows; i ++) {
+                double sum = 0;
+                for (int j = 0; j < A.n_rows; j++) {
+                    sum += Ainit(i, j) * solution[j];
+                }
+                double temp = sum - b[i];
+                errorSum += pow(abs(temp), 2);
+            }
+            return sqrt(errorSum);
+
+
+        }
+
+        void solveSystem() {
+            LUdecomposition();
+            findTheX();
+            cout << "Error is: " << findTheEuclidean() << endl;
         }
 
     public:
@@ -178,8 +199,6 @@ ostream& operator<<(ostream& os, const LU& obj) {
 int main() {
 
     LU lu = LU::from_file("data.txt");
-    lu.LUdecomposition();
-    cout << lu;
-    cout << lu.findTheX();
+    lu.solveSystem();
     return 0;
 }
