@@ -22,15 +22,16 @@ ostream& operator<<(ostream& os, const vector<double>& obj) {
 class QR {
     private:
         mat A;
-        mat Ainit;
         mat reflection;
         mat Q;
         double eps;
         double m;
         vector<double> s;
         vector<double> b;
+        Values solution;
 
     public:
+        mat Ainit;
         static QR from_file(string filePath) {
             ifstream input(filePath.c_str());
             int m;
@@ -153,14 +154,73 @@ class QR {
                 }
 
             }
-            Row<double> row = Row<double>();
-            mat bMat = mat(b);
-            mat x = trans(Q) * bMat / A;
         }
 
+        double div(double a, double b) {
+            assert(abs(b) > eps);
+            return a/b;
+        }
+
+        vector<double> findTheX() {
+            double size = A.n_rows;
+            vector<double> ys = vector<double>(size, 0);
+            ys[0] = div(b[0], A(0, 0));
+
+            for (int i = 1; i < size; i++) {
+                double temp = 0;
+                double sum = 0;
+                for (int j = 0; j < i; j++) {
+                    sum += A(i, j) * ys[j];
+                }
+                temp = b[i] - sum;
+                temp = div(temp, A(i, i));
+                ys[i] = temp;
+            }
+            solution = ys;
+            return ys;
+        }
+
+        vector<double> findTheX(vec b) {
+            double size = A.n_rows;
+            vector<double> ys = vector<double>(size, 0);
+            ys[0] = div(b[0], A(0, 0));
+
+            for (int i = 1; i < size; i++) {
+                double temp = 0;
+                double sum = 0;
+                for (int j = 0; j < i; j++) {
+                    sum += A(i, j) * ys[j];
+                }
+                temp = b[i] - sum;
+                temp = div(temp, A(i, i));
+                ys[i] = temp;
+            }
+            solution = ys;
+            return ys;
+        }
+
+        double findTheEuclidean() {
+            double errorSum = 0;
+            for (int i = 0; i < A.n_rows; i ++) {
+                double sum = 0;
+                for (int j = 0; j < A.n_rows; j++) {
+                    sum += Ainit(i, j) * solution[j];
+                }
+                double temp = sum - b[i];
+                errorSum += pow(abs(temp), 2);
+            }
+            return sqrt(errorSum);
+        }
+
+        mat inverse(mat matrix) {
+            mat result = mat(matrix);
+            for (int i = 0; i < matrix.n_cols; i++) {
+                vec col = matrix.col(i); 
+                result.col(i) = col;
+            }       
+            return result;
+        }
 };
-
-
 
 ostream& operator<<(ostream& os, const QR& obj) {
     
@@ -180,4 +240,20 @@ int main() {
     QR qr = QR::from_file("data.txt");
     qr.household();
     cout << qr;
+
+    cout << qr.findTheX() << endl;
+    cout << qr.findTheEuclidean() << endl;;
+
+    mat libA = qr.Ainit.i(), myA = qr.inverse(qr.Ainit);
+    mat newA = myA - libA;
+    double sum = 0;
+    double max = 0;
+    for (int i = 0; i < newA.n_rows; i++) {
+        for (int j = 0; j < newA.n_rows; j++) {
+            sum += newA(i, j);
+        }
+        if (max < sum) max = sum;
+        sum = 0;
+    }
+    cout << "C: " << max << endl;
 }

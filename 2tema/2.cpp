@@ -191,7 +191,9 @@ class LU {
 
 
 ostream& operator<<(ostream& os, const LU& obj) {
-    os << obj.A << endl;
+    
+    os << "Solution: "<< obj.solution << endl;
+    os << obj.A;
 
     return os;
 }
@@ -200,5 +202,6 @@ int main() {
 
     LU lu = LU::from_file("data.txt");
     lu.solveSystem();
+    cout << lu;
     return 0;
 }
