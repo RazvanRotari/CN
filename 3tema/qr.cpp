@@ -23,7 +23,6 @@ class QR {
     private:
         mat A;
         mat reflection;
-        mat Q;
         double eps;
         double m;
         vector<double> s;
@@ -32,6 +31,7 @@ class QR {
 
     public:
         mat Ainit;
+        mat Q;
         static QR from_file(string filePath) {
             ifstream input(filePath.c_str());
             int m;
@@ -90,7 +90,7 @@ class QR {
             double beta;
             double k;
 
-            for (int r = 0; r < n - 1; r++) {
+            for (int r = 0; r < n; r++) {
                 //Constructia matrici P
                 double omega = 0;
                 for (int i = r; i < n; i++) {
@@ -180,9 +180,9 @@ class QR {
             return ys;
         }
 
-        vector<double> findTheX(vec b) {
+        vec findTheX(vec b) {
             double size = A.n_rows;
-            vector<double> ys = vector<double>(size, 0);
+            vec ys = vec(size, 0);
             ys[0] = div(b[0], A(0, 0));
 
             for (int i = 1; i < size; i++) {
@@ -195,7 +195,6 @@ class QR {
                 temp = div(temp, A(i, i));
                 ys[i] = temp;
             }
-            solution = ys;
             return ys;
         }
 
@@ -207,6 +206,7 @@ class QR {
                     sum += Ainit(i, j) * solution[j];
                 }
                 double temp = sum - b[i];
+
                 errorSum += pow(abs(temp), 2);
             }
             return sqrt(errorSum);
@@ -216,6 +216,7 @@ class QR {
             mat result = mat(matrix);
             for (int i = 0; i < matrix.n_cols; i++) {
                 vec col = matrix.col(i); 
+                col = findTheX(col);
                 result.col(i) = col;
             }       
             return result;
@@ -229,9 +230,9 @@ ostream& operator<<(ostream& os, const QR& obj) {
 
     mat newQ, newR;
     qr(newQ, newR, obj.Ainit);
-    os << endl << endl << "Armadillo" << endl;
+    os << endl << "Armadillo" << endl;
     os << "R" << newR << endl;
-    os << "Q" << newQ;
+    os << "Q" << newQ.t();
     return os;
 }
 
@@ -244,13 +245,14 @@ int main() {
     cout << qr.findTheX() << endl;
     cout << qr.findTheEuclidean() << endl;;
 
-    mat libA = qr.Ainit.i(), myA = qr.inverse(qr.Ainit);
+    mat libA = qr.Ainit.i();
+    mat myA = qr.inverse(qr.Q);
     mat newA = myA - libA;
     double sum = 0;
     double max = 0;
     for (int i = 0; i < newA.n_rows; i++) {
         for (int j = 0; j < newA.n_rows; j++) {
-            sum += newA(i, j);
+            sum += abs(newA(i, j));
         }
         if (max < sum) max = sum;
         sum = 0;
