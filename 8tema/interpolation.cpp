@@ -30,11 +30,13 @@ ostream& operator<<(ostream& os, const DataPoints& obj) {
 }
 
 double function(double input) {
-    return pow(input, 3) + 2 * pow(input, 2) + input - 1;
+    /* return pow(input, 3) + 2 * pow(input, 2) + input - 1; */
+    return 2 * pow(input, 2) + input - 1;
 }
 
 double derivedFunction(double input) {
-    return 3 * pow(input, 2) + 4 * input + 1;
+    /* return 3 * pow(input, 2) + 4 * input + 1; */
+    return 4 * input + 1;
 }
 
 DataPoints generateDataPoints(double start, double end, size_t count) {
@@ -43,8 +45,12 @@ DataPoints generateDataPoints(double start, double end, size_t count) {
     uniform_real_distribution<double> distribution(start, end);
     DataPoints dataPoints;
     dataPoints.push_back(make_pair(start, function(start)));
+
+    double h = (end-start) / (count + 1);
     for (size_t index=0; index < count; index++) {
-        double input = distribution(random_generator);
+        /* double input = distribution(random_generator); */
+        double input = start + (index + 1) * h;
+
         double output = function(input);
         dataPoints.push_back(make_pair(input, output));
     }
@@ -62,9 +68,7 @@ double lagrange(DataPoints dataPoints, double input) {
     }
 
     for(size_t step = 1; step < dataPoints.size(); step++) {
-        cout << "Step: " << step << endl;
         for(size_t index = 0; index < values.size() - 1; index++) {
-            cout << "Pair: (" << index << ", " << index+step << ")" << endl; 
             double first = dataPoints[index].first;
             double last = dataPoints[index+step].first;
             values[index] = ((last - input) * values[index] + (input - first) * values[index+1]) / (last - first);
@@ -79,12 +83,14 @@ double spline(DataPoints dataPoints, double input, double derivedFirst, double d
 
     auto x = [&dataPoints](size_t index){return dataPoints.at(index).first;};
     auto y = [&dataPoints](size_t index){return dataPoints.at(index).second;};
-    auto h = [&dataPoints](size_t index){return dataPoints.at(index + 1).first - dataPoints.at(index).first;};
 
-    sp_mat H(size+1, size+1);
+    auto h = [&x](size_t index){return x(index + 1) - x(index);};
+
+    sp_mat H(size, size);
     H(0,0) = 2 * h(0);
     H(0, 1) = h(0);
-    vec f(size + 1);
+
+    vec f(size);
 
     double val = (y(1) - y(0)) / h(0);
     val -= derivedFirst;
@@ -94,9 +100,9 @@ double spline(DataPoints dataPoints, double input, double derivedFirst, double d
     val = derivedLast;
     val -= (y(size - 1) - y(size - 2)) / h(size - 2);
     val *= 6;
-    f[size] = val;
+    f[size - 1] = val;
 
-    for (size_t index = 1; index < size-1; index++) {
+    for (size_t index = 1; index < size - 1; index++) {
         double hindex = h(index);
         double hprev = h(index-1);
         H(index, index - 1) = hprev;
@@ -104,17 +110,16 @@ double spline(DataPoints dataPoints, double input, double derivedFirst, double d
         H(index, index + 1) = hindex;
 
         double val = 0;
-        val = y(index + 1) - y(index) / hindex;
-        val -= y(index) - y(index - 1) / hprev;
+        val = (y(index + 1) - y(index)) / hindex;
+        val -= (y(index) - y(index - 1)) / hprev;
         val *= 6;
         f[index] = val;
     }
-    H(size, size-1) = h(size - 2);
-    H(size, size) = 2 * h(size - 2);
+    H(size - 1, size - 2) = h(size - 2);
+    H(size - 1, size - 1) = 2 * h(size - 2);
 
-    cout << size << endl;
-    cout << H;
     auto A = spsolve(H, f);
+    cout << A;
 
     size_t i0 = 0; 
     for(size_t index = 0; index < size - 1; index++) {
@@ -123,18 +128,16 @@ double spline(DataPoints dataPoints, double input, double derivedFirst, double d
             break;
         }
     }
-    cout << i0 << "(" << x(i0) << ", " << x(i0+1) << ")" << endl;
     double alpha = y(i0+1) - y(i0);
     alpha /= h(i0);
     alpha -= h(i0) * (A(i0 + 1) - A(i0)) / 6;
 
     double beta = (x(i0+1) * y(i0) - x(i0) * y(i0 + 1)) / h(i0);
-    beta -= h(i0) * (x(i0+1) * A(i0) - x(i0) - A(i0+1)) / 6;
+    beta -= h(i0) * (x(i0+1) * A(i0) - x(i0) * A(i0+1)) / 6;
 
     double ret = pow(input - x(i0), 3) * A(i0 + 1);
     ret /= 6 * h(i0);
-    ret += pow(x(i0 + 1) - input, 3) * A(i0);
-    ret /= 6 * h(i0);
+    ret += (pow(x(i0 + 1) - input, 3) * A(i0)) / (6 * h(i0));
 
 
     ret += alpha * input;
@@ -144,11 +147,20 @@ double spline(DataPoints dataPoints, double input, double derivedFirst, double d
 }
 
 int main() {
-    double start = 0, end = 100;
+    double start = 0, end = 8;
     double count = 10;
+    double input = 2;
+
+    /* cout << "start: "; */
+    /* cin >> start; */
+    /* cout << "end: "; */
+    /* cin >> end; */
+    /* cout << "input: "; */
+    /* cin >> input; */
+
     DataPoints dataPoints = generateDataPoints(start, end, count);
     cout << dataPoints;
-    /* cout << "Lagrange: "<< lagrange(dataPoints, 25) << " Expected: " << function(25); */
-    cout << "Spline: "<< spline(dataPoints, 25 , derivedFunction(start), derivedFunction(end)) << " Expected: " << function(25);
+    cout << "Lagrange: "<< lagrange(dataPoints, input) << " Expected: " << function(input) << endl;
+    cout << "Spline: "<< spline(dataPoints, input, derivedFunction(start), derivedFunction(end)) << " Expected: " << function(input);
     return 0;
 }
